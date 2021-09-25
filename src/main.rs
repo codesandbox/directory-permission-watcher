@@ -50,7 +50,9 @@ fn check_permissions(paths: Vec<PathBuf>, parent_owners: (u32, u32)) {
     for path in paths.clone().iter() {
         let p = path.as_path();
 
-        println!("Validating file permissions for {:?}", p);
+        if cfg!(debug_assertions) {
+            println!("Validating file permissions for {:?}", p);
+        }
 
         match get_permissions(p) {
             Ok((curr_uid, curr_gid)) => {
@@ -65,7 +67,7 @@ fn check_permissions(paths: Vec<PathBuf>, parent_owners: (u32, u32)) {
                         Ok(()) => println!("Updated file owners"),
                         Err(err) => println!("Could not update file owners {:?}", err),
                     };
-                } else {
+                } else if cfg!(debug_assertions) {
                     println!("File permissions of {:?} are in order", p);
                 }
             }
@@ -90,7 +92,9 @@ fn start_watcher(path: &str, owners: (u32, u32)) {
 }
 
 fn main() {
-    let path = "/Users/jasperdemoor/Downloads";
+    let path = &std::env::args()
+        .nth(1)
+        .expect("Argument 1 needs to be a path");
 
     match get_permissions(Path::new(path)) {
         Ok(owners) => {
