@@ -52,7 +52,7 @@ fn check_permissions(paths: Vec<PathBuf>) {
         let p = path.as_path();
 
         if cfg!(debug_assertions) {
-            println!("Validating file permissions for {:?}", p);
+            println!("Validating file permissions of {:?}", p);
         }
 
         match p.mode() {
@@ -113,14 +113,14 @@ fn check_permissions(paths: Vec<PathBuf>) {
                             mode.set_protection(User::Other, &other_protection);
 
                             match p.set_mode(mode) {
-                                Ok(_) => println!("Updated file permissions"),
+                                Ok(_) => println!("Updated file permissions of {:?}", path),
                                 Err(err) => println!("Could not update file permissions {:?}", err),
                             }
                         }
                     }
                 }
             }
-            Err(err) => println!("Could not load file data {:?}, {:?}", p, err),
+            Err(err) => println!("Could not load permissions of {:?}, {:?}", p, err),
         }
     }
 }
