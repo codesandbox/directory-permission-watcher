@@ -1,13 +1,9 @@
-use chownr::chownr;
+use file_mode::{ModePath, ProtectionBit, User};
 use futures::{
     channel::mpsc::{channel, Receiver},
     SinkExt, StreamExt,
 };
-use nix::unistd::{Gid, Uid};
 use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
-use std::fs;
-use std::io;
-use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 
 fn async_watcher() -> notify::Result<(RecommendedWatcher, Receiver<notify::Result<Event>>)> {
@@ -17,14 +13,17 @@ fn async_watcher() -> notify::Result<(RecommendedWatcher, Receiver<notify::Resul
     // You can also access each implementation directly e.g. INotifyWatcher.
     let watcher = RecommendedWatcher::new(move |res| {
         futures::executor::block_on(async {
-            tx.send(res).await.unwrap();
+            match tx.send(res).await {
+                Ok(()) => {}
+                Err(err) => println!("watch error: {:?}", err),
+            };
         })
     })?;
 
     Ok((watcher, rx))
 }
 
-async fn async_watch<P: AsRef<Path>>(path: P, owners: (u32, u32)) -> notify::Result<()> {
+async fn async_watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
     let (mut watcher, mut rx) = async_watcher()?;
 
     // Add a path to be watched. All files and directories at that path and
@@ -35,18 +34,20 @@ async fn async_watch<P: AsRef<Path>>(path: P, owners: (u32, u32)) -> notify::Res
         match res {
             Ok(event) => {
                 if !event.kind.is_remove() {
-                    println!("watch error: {:?}", event.kind);
-                    check_permissions(event.clone().paths, owners);
+                    if cfg!(debug_assertions) {
+                        println!("watch event: {:?}", event.kind);
+                    }
+                    check_permissions(event.clone().paths);
                 }
             }
-            Err(e) => println!("watch error: {:?}", e),
+            Err(err) => println!("watch error: {:?}", err),
         }
     }
 
     Ok(())
 }
 
-fn check_permissions(paths: Vec<PathBuf>, parent_owners: (u32, u32)) {
+fn check_permissions(paths: Vec<PathBuf>) {
     for path in paths.clone().iter() {
         let p = path.as_path();
 
@@ -54,38 +55,81 @@ fn check_permissions(paths: Vec<PathBuf>, parent_owners: (u32, u32)) {
             println!("Validating file permissions for {:?}", p);
         }
 
-        match get_permissions(p) {
-            Ok((curr_uid, curr_gid)) => {
-                let (parent_uid, parent_gid) = parent_owners;
+        match p.mode() {
+            Ok(mut mode) => {
+                if let Some(file_type) = mode.file_type() {
+                    if file_type.is_directory() || file_type.is_regular_file() {
+                        let mut should_update_path = false;
 
-                if parent_uid != curr_uid && parent_gid != curr_gid {
-                    match chownr(
-                        p,
-                        Some(Uid::from_raw(parent_uid)),
-                        Some(Gid::from_raw(parent_gid)),
-                    ) {
-                        Ok(()) => println!("Updated file owners"),
-                        Err(err) => println!("Could not update file owners {:?}", err),
-                    };
-                } else if cfg!(debug_assertions) {
-                    println!("File permissions of {:?} are in order", p);
+                        let mut owner_protection = mode.user_protection(User::Owner);
+                        let mut group_protection = mode.user_protection(User::Group);
+                        let mut other_protection = mode.user_protection(User::Other);
+
+                        // Owner permissions
+                        if !owner_protection.is_read_set() {
+                            should_update_path = true;
+                            owner_protection.set(ProtectionBit::Read)
+                        }
+                        if !owner_protection.is_write_set() {
+                            should_update_path = true;
+                            owner_protection.set(ProtectionBit::Write)
+                        }
+
+                        // Group permissions
+                        if !group_protection.is_read_set() {
+                            should_update_path = true;
+                            group_protection.set(ProtectionBit::Read)
+                        }
+                        if !group_protection.is_write_set() {
+                            should_update_path = true;
+                            group_protection.set(ProtectionBit::Write)
+                        }
+
+                        // Other permissions
+                        if !other_protection.is_read_set() {
+                            should_update_path = true;
+                            other_protection.set(ProtectionBit::Read)
+                        }
+
+                        // Directory needs execute permissions as well
+                        if file_type.is_directory() {
+                            if !owner_protection.is_execute_set() {
+                                should_update_path = true;
+                                owner_protection.set(ProtectionBit::Execute)
+                            }
+                            if !group_protection.is_execute_set() {
+                                should_update_path = true;
+                                group_protection.set(ProtectionBit::Execute)
+                            }
+                            if !other_protection.is_execute_set() {
+                                should_update_path = true;
+                                other_protection.set(ProtectionBit::Execute)
+                            }
+                        }
+
+                        if should_update_path {
+                            mode.set_protection(User::Owner, &owner_protection);
+                            mode.set_protection(User::Group, &group_protection);
+                            mode.set_protection(User::Other, &other_protection);
+
+                            match p.set_mode(mode) {
+                                Ok(_) => println!("Updated file permissions"),
+                                Err(err) => println!("Could not update file permissions {:?}", err),
+                            }
+                        }
+                    }
                 }
             }
             Err(err) => println!("Could not load file data {:?}, {:?}", p, err),
-        };
+        }
     }
 }
 
-fn get_permissions(path: &Path) -> io::Result<(u32, u32)> {
-    let metadata = fs::metadata(path)?;
-    return Ok((metadata.uid(), metadata.gid()));
-}
-
-fn start_watcher(path: &str, owners: (u32, u32)) {
+fn start_watcher(path: &str) {
     println!("watching: {}", path);
 
     futures::executor::block_on(async {
-        if let Err(e) = async_watch(path, owners).await {
+        if let Err(e) = async_watch(path).await {
             println!("error: {:?}", e)
         }
     });
@@ -96,10 +140,5 @@ fn main() {
         .nth(1)
         .expect("Argument 1 needs to be a path");
 
-    match get_permissions(Path::new(path)) {
-        Ok(owners) => {
-            start_watcher(path, owners);
-        }
-        Err(e) => panic!("fs error: {:?}", e),
-    }
+    start_watcher(path);
 }

@@ -8,5 +8,4 @@ edition = "2018"
 [dependencies]
 notify = "5.0.0-pre.13"
 futures = "0.3.17"
-chownr = "3.0.0"
-nix = "0.14.1"
+file-mode = "0.1.2"

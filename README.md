@@ -1,6 +1,6 @@
 # Permission ensurer
 
-watcher a directory and updates any sub-files/directory uid and gid to match the root directory
+Watcher a directory and updates any sub-files/directory permissions to ensure read & write for user and group.
 
 ## Run it
 
