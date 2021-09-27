@@ -21,8 +21,5 @@ jobs:
         with:
           name: release-build
           path: |
-            target/release
-            !target/release/.fingerprint
-            !target/release/build
-            !target/release/deps
-            !target/release/incremental
+            target/release/directory-permission-watcher
+            target/release/directory-permission-watcher.d
