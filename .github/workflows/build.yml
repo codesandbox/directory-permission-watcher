@@ -5,8 +5,8 @@ on:
 
 jobs:
   build:
-		runs-on: ubuntu-latest
-		steps:
+    runs-on: ubuntu-latest
+    steps:
       - uses: actions/checkout@v2
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -14,9 +14,9 @@ jobs:
           toolchain: stable
           profile: minimal
           override: true
-			- name: Build
-				run: cargo build --release
-			- name: Archive release build
+      - name: Build
+        run: cargo build --release
+      - name: Archive release build
         uses: actions/upload-artifact@v2
         with:
           name: release-build
