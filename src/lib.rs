@@ -1,15 +1,22 @@
 extern crate napi;
 #[macro_use]
 extern crate napi_derive;
-use napi::{CallContext, Env, JsObject, JsUndefined, Property, Result};
+use napi::{CallContext, Env, JsObject, JsString, JsStringUtf8, JsUndefined, Property, Result};
 
 mod watcher;
 use watcher::Watcher;
 
 #[js_function(2)]
 fn watch(ctx: CallContext) -> Result<JsUndefined> {
-    // let this: JsObject = ctx.this_unchecked();
-    // let watcher_instance: &mut Watcher = ctx.env.unwrap(&this)?;
+    let this: JsObject = ctx.this_unchecked();
+    let watcher_instance: &mut Watcher = ctx.env.unwrap(&this)?;
+    let watch_options = ctx.get::<JsObject>(0)?;
+    let watch_directory: JsStringUtf8 = watch_options
+        .get_named_property::<JsString>("directory")?
+        .into_utf8()?;
+
+    watcher_instance.watch(watch_directory.as_str()?);
+
     ctx.env.get_undefined()
 }
 
