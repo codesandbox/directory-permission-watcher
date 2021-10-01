@@ -15,6 +15,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
+name = "bytes"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4872d67bab6358e59559027aa3b9157c53d9358c51423c17554809a8858e0f8"
+
+[[package]]
 name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -46,7 +52,11 @@ version = "0.1.0"
 dependencies = [
  "file-mode",
  "futures",
+ "napi",
+ "napi-build",
+ "napi-derive",
  "notify",
+ "tokio",
 ]
 
 [[package]]
@@ -174,6 +184,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "hermit-abi"
+version = "0.1.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "inotify"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -192,6 +211,21 @@ checksum = "e05c02b5e89bff3b946cedeca278abc628fe811e604f027c45a8aa3cf793d0eb"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "instant"
+version = "0.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "716d3d89f35ac6a34fd0eed635395f4c3b76fa889338a4632e5231a8684216bd"
+dependencies = [
+ "cfg-if",
+]
+
+[[package]]
+name = "itoa"
+version = "0.4.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b71991ff56294aa922b450139ee08b3bfc70982c6b2c7562771375cf73542dd4"
 
 [[package]]
 name = "kqueue"
@@ -224,6 +258,15 @@ name = "libc"
 version = "0.2.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2a5ac8f984bfcf3a823267e5fde638acc3325f6496633a5da6bb6eb2171e103"
+
+[[package]]
+name = "lock_api"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "712a4d093c9976e24e7dbca41db895dabcbac38eb5f4045393d17a95bdfb1109"
+dependencies = [
+ "scopeguard",
+]
 
 [[package]]
 name = "log"
@@ -263,6 +306,41 @@ dependencies = [
 ]
 
 [[package]]
+name = "napi"
+version = "1.7.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2813a6f24e181eb1faba8bc632e56049901fb71df4bf3e0cd6b4086db6606c78"
+dependencies = [
+ "napi-sys",
+ "serde",
+ "serde_json",
+ "winapi",
+]
+
+[[package]]
+name = "napi-build"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9fbe11972c601a48aa12a0e2aa032e9e251655ce6c6836cac26e5c0b3b5a5dcc"
+
+[[package]]
+name = "napi-derive"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e7ed160148f94ee17936f00288029cb0cfb37c08bbace9f514f735dcd869ed7"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "napi-sys"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43563506c466587478849d80f46383d859b91bbec586580dadeb3639588f2f7e"
+
+[[package]]
 name = "notify"
 version = "5.0.0-pre.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -286,6 +364,47 @@ version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f6bb902e437b6d86e03cce10a7e2af662292c5dfef23b65899ea3ac9354ad44"
 dependencies = [
+ "winapi",
+]
+
+[[package]]
+name = "num_cpus"
+version = "1.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05499f3756671c15885fee9034446956fff3f243d6077b91e5767df161f766b3"
+dependencies = [
+ "hermit-abi",
+ "libc",
+]
+
+[[package]]
+name = "once_cell"
+version = "1.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "692fcb63b64b1758029e0a96ee63e049ce8c5948587f2f7208df04625e5f6b56"
+
+[[package]]
+name = "parking_lot"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d17b78036a60663b797adeaee46f5c9dfebb86948d1255007a1d6be0271ff99"
+dependencies = [
+ "instant",
+ "lock_api",
+ "parking_lot_core",
+]
+
+[[package]]
+name = "parking_lot_core"
+version = "0.8.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d76e8e1493bcac0d2766c42737f34458f1c8c50c0d23bcb24ea953affb273216"
+dependencies = [
+ "cfg-if",
+ "instant",
+ "libc",
+ "redox_syscall",
+ "smallvec",
  "winapi",
 ]
 
@@ -341,6 +460,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ryu"
+version = "1.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
+
+[[package]]
 name = "same-file"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -350,10 +475,48 @@ dependencies = [
 ]
 
 [[package]]
+name = "scopeguard"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
+
+[[package]]
+name = "serde"
+version = "1.0.130"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f12d06de37cf59146fbdecab66aa99f9fe4f78722e3607577a5375d66bd0c913"
+
+[[package]]
+name = "serde_json"
+version = "1.0.68"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f690853975602e1bfe1ccbf50504d67174e3bcf340f23b5ea9992e0587a52d8"
+dependencies = [
+ "itoa",
+ "ryu",
+ "serde",
+]
+
+[[package]]
+name = "signal-hook-registry"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e51e73328dc4ac0c7ccbda3a494dfa03df1de2f46018127f60c693f2648455b0"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "slab"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c307a32c1c5c437f38c7fd45d753050587732ba8628319fbdf12a7e289ccc590"
+
+[[package]]
+name = "smallvec"
+version = "1.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ecab6c735a6bb4139c0caafd0cc3635748bbb3acf4550e8138122099251f309"
 
 [[package]]
 name = "syn"
@@ -364,6 +527,37 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-xid",
+]
+
+[[package]]
+name = "tokio"
+version = "1.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2c2416fdedca8443ae44b4527de1ea633af61d8f7169ffa6e72c5b53d24efcc"
+dependencies = [
+ "autocfg",
+ "bytes",
+ "libc",
+ "memchr",
+ "mio",
+ "num_cpus",
+ "once_cell",
+ "parking_lot",
+ "pin-project-lite",
+ "signal-hook-registry",
+ "tokio-macros",
+ "winapi",
+]
+
+[[package]]
+name = "tokio-macros"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "154794c8f499c2619acd19e839294703e9e32e7630ef5f46ea80d4ef0fbee5eb"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

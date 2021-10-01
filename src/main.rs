@@ -49,20 +49,19 @@ async fn async_watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
     Ok(())
 }
 
-fn start_watcher(path: &str) {
+async fn start_watcher(path: &str) {
     println!("watching: {}", path);
 
-    futures::executor::block_on(async {
-        if let Err(e) = async_watch(path).await {
-            println!("error: {:?}", e)
-        }
-    });
+    if let Err(e) = async_watch(path).await {
+        println!("error: {:?}", e)
+    }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let path = &std::env::args()
         .nth(1)
         .expect("Argument 1 needs to be a path");
 
-    start_watcher(path);
+    start_watcher(path).await;
 }
