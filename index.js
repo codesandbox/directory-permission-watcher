@@ -1,12 +1,13 @@
 const { Watcher } = require("./library");
+const path = require('path');
 
 const watcher = new Watcher();
 watcher.watch(
   {
-    directory: "/some-directory",
+    directory: __dirname,
     excludes: ["node_modules"],
   },
-  (changes) => {
-    console.log(changes);
+  (err, ...values) => {
+    console.log(values);
   }
 );

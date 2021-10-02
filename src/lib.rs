@@ -1,10 +1,15 @@
 extern crate napi;
 #[macro_use]
 extern crate napi_derive;
-use napi::{CallContext, Env, JsObject, JsString, JsStringUtf8, JsUndefined, Property, Result};
 
 mod watcher;
 use watcher::Watcher;
+
+use napi::{
+    threadsafe_function::{ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode},
+    CallContext, Env, JsFunction, JsObject, JsString, JsStringUtf8, JsUndefined, Property, Result,
+};
+use std::thread;
 
 #[js_function(2)]
 fn watch(ctx: CallContext) -> Result<JsUndefined> {
@@ -14,6 +19,21 @@ fn watch(ctx: CallContext) -> Result<JsUndefined> {
     let watch_directory: JsStringUtf8 = watch_options
         .get_named_property::<JsString>("directory")?
         .into_utf8()?;
+
+    let func = ctx.get::<JsFunction>(1)?;
+    let tsfn: ThreadsafeFunction<Vec<String>> =
+        ctx.env
+            .create_threadsafe_function(&func, 0, |ctx: ThreadSafeCallContext<Vec<String>>| {
+                ctx.value
+                    .iter()
+                    .map(|v| ctx.env.create_string(v.as_str()))
+                    .collect::<Result<Vec<JsString>>>()
+            })?;
+
+    thread::spawn(move || {
+        // It's okay to call a threadsafe function multiple times.
+        tsfn.call(Ok(vec![String::from("test")]), ThreadsafeFunctionCallMode::Blocking);
+    });
 
     watcher_instance.watch(watch_directory.as_str()?);
 
