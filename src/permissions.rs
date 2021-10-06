@@ -1,6 +1,18 @@
 use file_mode::{ModeError, ModePath, ProtectionBit, User};
-use std::io::ErrorKind as IOErrorKind;
+use std::io::{Error as IOError, ErrorKind as IOErrorKind};
 use std::path::{Path, PathBuf};
+
+fn should_log_io_error(err: &IOError) -> bool {
+    match err.kind() {
+        // This is probably a temporary file
+        IOErrorKind::NotFound => {
+            return false;
+        }
+        _ => {
+            return true;
+        }
+    }
+}
 
 pub fn check_permission(p: &Path) {
     match p.mode() {
@@ -61,15 +73,24 @@ pub fn check_permission(p: &Path) {
                         mode.set_protection(User::Other, &other_protection);
 
                         match p.set_mode(mode) {
-                            Ok(_) => println!("Updated file permissions of {:?}", p),
+                            Ok(_) => {
+                                if cfg!(debug_assertions) {
+                                    println!("Updated permissions of {:?}", p)
+                                }
+                            }
                             Err(err) => match err {
-                                ModeError::IoError(_) => {
-                                    if cfg!(debug_assertions) {
-                                        println!("io error: {:?}, {:?}", p, err);
+                                ModeError::IoError(err) => {
+                                    if should_log_io_error(&err) {
+                                        println!("Could not update permissions {:?}, {:?}", p, err)
+                                    } else if cfg!(debug_assertions) {
+                                        println!(
+                                            "[DEBUG-ERROR] update permissions: {:?}, {:?}",
+                                            p, err
+                                        );
                                     }
                                 }
                                 _ => {
-                                    println!("Could not update file permissions {:?}", err)
+                                    println!("Invalid permissions {:?}", err)
                                 }
                             },
                         }
@@ -77,16 +98,13 @@ pub fn check_permission(p: &Path) {
                 }
             }
         }
-        Err(err) => match err.kind() {
-            IOErrorKind::NotFound => {
-                if cfg!(debug_assertions) {
-                    println!("io error: {:?}, {:?}", p, err);
-                }
-            }
-            _ => {
+        Err(err) => {
+            if should_log_io_error(&err) {
                 println!("Could not load permissions of {:?}, {:?}", p, err)
+            } else if cfg!(debug_assertions) {
+                println!("[DEBUG-ERROR] load permissions: {:?}, {:?}", p, err);
             }
-        },
+        }
     }
 }
 
