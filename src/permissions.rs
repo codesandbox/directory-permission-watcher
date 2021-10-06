@@ -1,4 +1,5 @@
-use file_mode::{ModePath, ProtectionBit, User};
+use file_mode::{ModeError, ModePath, ProtectionBit, User};
+use std::io::ErrorKind as IOErrorKind;
 use std::path::{Path, PathBuf};
 
 pub fn check_permission(p: &Path) {
@@ -61,13 +62,23 @@ pub fn check_permission(p: &Path) {
 
                         match p.set_mode(mode) {
                             Ok(_) => println!("Updated file permissions of {:?}", p),
-                            Err(err) => println!("Could not update file permissions {:?}", err),
+                            Err(err) => match err {
+                                ModeError::IoError(_) => {}
+                                _ => {
+                                    println!("Could not update file permissions {:?}", err)
+                                }
+                            },
                         }
                     }
                 }
             }
         }
-        Err(err) => println!("Could not load permissions of {:?}, {:?}", p, err),
+        Err(err) => match err.kind() {
+            IOErrorKind::NotFound => {}
+            _ => {
+                println!("Could not load permissions of {:?}, {:?}", p, err)
+            }
+        },
     }
 }
 
