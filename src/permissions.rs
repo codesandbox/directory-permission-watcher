@@ -63,7 +63,11 @@ pub fn check_permission(p: &Path) {
                         match p.set_mode(mode) {
                             Ok(_) => println!("Updated file permissions of {:?}", p),
                             Err(err) => match err {
-                                ModeError::IoError(_) => {}
+                                ModeError::IoError(_) => {
+                                    if cfg!(debug_assertions) {
+                                        println!("io error: {:?}, {:?}", p, err);
+                                    }
+                                }
                                 _ => {
                                     println!("Could not update file permissions {:?}", err)
                                 }
@@ -74,7 +78,11 @@ pub fn check_permission(p: &Path) {
             }
         }
         Err(err) => match err.kind() {
-            IOErrorKind::NotFound => {}
+            IOErrorKind::NotFound => {
+                if cfg!(debug_assertions) {
+                    println!("io error: {:?}, {:?}", p, err);
+                }
+            }
             _ => {
                 println!("Could not load permissions of {:?}, {:?}", p, err)
             }
