@@ -3,8 +3,9 @@ use futures::{
     SinkExt, StreamExt,
 };
 use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
+mod common_path;
 mod permissions;
 
 fn async_watcher() -> notify::Result<(RecommendedWatcher, Receiver<notify::Result<Event>>)> {
@@ -49,8 +50,8 @@ async fn async_watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
     Ok(())
 }
 
-fn start_watcher(path: &str) {
-    println!("watching: {}", path);
+fn start_watcher(path: PathBuf) {
+    println!("watching: {:?}", path);
 
     futures::executor::block_on(async {
         if let Err(e) = async_watch(path).await {
@@ -60,9 +61,13 @@ fn start_watcher(path: &str) {
 }
 
 fn main() {
-    let path = &std::env::args()
-        .nth(1)
-        .expect("Argument 1 needs to be a path");
+    let path = Path::new(
+        &std::env::args()
+            .nth(1)
+            .expect("Argument 1 needs to be a path"),
+    )
+    .to_path_buf();
 
-    start_watcher(path);
+    permissions::check_permission_recursive(path.clone());
+    start_watcher(path.clone());
 }
