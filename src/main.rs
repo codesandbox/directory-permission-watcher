@@ -4,6 +4,11 @@ use futures::{
 };
 use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
+use std::{
+    collections::HashSet,
+    iter::FromIterator,
+    sync::{Arc, Mutex},
+};
 use std::{thread, time};
 
 mod common_path;
@@ -33,15 +38,47 @@ async fn async_watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
     // below will be monitored for changes.
     watcher.watch(path.as_ref(), RecursiveMode::Recursive)?;
 
+    let paths: Arc<Mutex<Option<HashSet<PathBuf>>>> = Default::default();
+    let paths_ref = paths.clone();
+    thread::spawn(move || loop {
+        let delay_duration = time::Duration::from_secs(5);
+        thread::sleep(delay_duration);
+
+        let mut paths_mutex = paths_ref.lock().unwrap();
+        let taken_paths = paths_mutex.take();
+        if let Some(paths) = taken_paths {
+            if paths.len() > 0 {
+                let paths_vec = Vec::from_iter(paths);
+                permissions::check_permissions(paths_vec);
+            }
+        }
+    });
+
     while let Some(res) = rx.next().await {
         match res {
             Ok(event) => {
-                if !event.kind.is_remove() {
+                if !event.kind.is_remove() && !event.kind.is_access() && !event.kind.is_other() {
                     if cfg!(debug_assertions) {
                         println!("watch event: {:?}", event.kind);
                     }
 
-                    permissions::check_permissions(event.clone().paths);
+                    let mut paths_mutex = paths.lock().unwrap();
+                    let mut taken_paths = paths_mutex.take();
+                    if taken_paths == None {
+                        taken_paths = Some(Default::default());
+                    }
+
+                    if let Some(mut paths) = taken_paths.clone() {
+                        for path in event.clone().paths {
+                            paths.insert(path.to_path_buf());
+                        }
+
+                        *paths_mutex = Some(paths);
+                    } else {
+                        *paths_mutex = taken_paths;
+                    }
+
+                    println!("{:?}", paths_mutex);
                 }
             }
             Err(err) => println!("watch error: {:?}", err),
