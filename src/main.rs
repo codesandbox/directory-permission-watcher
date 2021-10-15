@@ -58,10 +58,6 @@ async fn async_watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
         match res {
             Ok(event) => {
                 if !event.kind.is_remove() && !event.kind.is_access() && !event.kind.is_other() {
-                    if cfg!(debug_assertions) {
-                        println!("watch event: {:?}", event.kind);
-                    }
-
                     let mut paths_mutex = paths.lock().unwrap();
                     let mut taken_paths = paths_mutex.take();
                     if taken_paths == None {
@@ -69,6 +65,10 @@ async fn async_watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
                     }
 
                     if let Some(mut paths) = taken_paths.clone() {
+                        if cfg!(debug_assertions) {
+                            println!("add paths: {:?}", paths.clone());
+                        }
+
                         for path in event.clone().paths {
                             paths.insert(path.to_path_buf());
                         }
@@ -77,8 +77,6 @@ async fn async_watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
                     } else {
                         *paths_mutex = taken_paths;
                     }
-
-                    println!("{:?}", paths_mutex);
                 }
             }
             Err(err) => println!("watch error: {:?}", err),
