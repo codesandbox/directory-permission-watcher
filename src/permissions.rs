@@ -1,8 +1,6 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-use crate::common_path::common_path_all;
-
 pub fn check_permission_recursive(path: PathBuf) {
     if let Ok(path_str) = path.clone().into_os_string().into_string() {
         let cmd_output = Command::new("chmod")
@@ -21,13 +19,5 @@ pub fn check_permission_recursive(path: PathBuf) {
                 );
             }
         }
-    }
-}
-
-pub fn check_permissions(paths: Vec<PathBuf>) {
-    if let Some(common_path) = common_path_all(paths.clone()) {
-        check_permission_recursive(common_path);
-    } else {
-        println!("Could not find common path for {:?}", paths);
     }
 }
