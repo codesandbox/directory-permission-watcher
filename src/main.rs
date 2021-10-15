@@ -4,6 +4,7 @@ use futures::{
 };
 use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
+use std::{thread, time};
 
 mod common_path;
 mod permissions;
@@ -51,13 +52,18 @@ async fn async_watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
 }
 
 fn start_watcher(path: PathBuf) {
-    println!("watching: {:?}", path);
+    println!("watching: {:?}", path.clone());
 
     futures::executor::block_on(async {
-        if let Err(e) = async_watch(path).await {
+        if let Err(e) = async_watch(path.clone()).await {
             println!("error: {:?}", e)
         }
     });
+
+    // Restart watcher every time it fails with a certain delay
+    let restart_delay = time::Duration::from_secs(60);
+    thread::sleep(restart_delay);
+    start_watcher(path.clone());
 }
 
 fn main() {
