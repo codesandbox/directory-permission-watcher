@@ -26,10 +26,6 @@ pub fn check_permission_recursive(path: PathBuf) {
 
 pub fn check_permissions(paths: Vec<PathBuf>) {
     if let Some(common_path) = common_path_all(paths.clone()) {
-        if cfg!(debug_assertions) {
-            println!("Validating file permissions of {:?}", common_path);
-        }
-
         check_permission_recursive(common_path);
     } else {
         println!("Could not find common path for {:?}", paths);
