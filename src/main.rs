@@ -67,12 +67,10 @@ fn start_watcher(path: PathBuf) {
 }
 
 fn main() {
-    let path = Path::new(
-        &std::env::args()
-            .nth(1)
-            .expect("Argument 1 needs to be a path"),
-    )
-    .to_path_buf();
+    let path_input = &std::env::args()
+        .nth(1)
+        .expect("Argument 1 needs to be a path");
+    let path = Path::new(path_input).to_path_buf();
 
     permissions::check_permission_recursive(path.clone());
     start_watcher(path.clone());
