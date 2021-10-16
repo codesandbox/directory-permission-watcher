@@ -43,7 +43,7 @@ async fn async_watch(path: PathBuf) -> notify::Result<()> {
     let common_path: Arc<Mutex<Option<PathBuf>>> = Default::default();
     let common_path_ref = common_path.clone();
     thread::spawn(move || loop {
-        thread::sleep(time::Duration::from_secs(5));
+        thread::sleep(time::Duration::from_millis(1500));
 
         let mut paths_mutex = common_path_ref.lock().unwrap();
         let taken_path = paths_mutex.take();
