@@ -29,18 +29,21 @@ fn async_watcher() -> notify::Result<(RecommendedWatcher, Receiver<notify::Resul
     Ok((watcher, rx))
 }
 
-async fn async_watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
+async fn async_watch(path: PathBuf) -> notify::Result<()> {
     let (mut watcher, mut rx) = async_watcher()?;
 
     // Add a path to be watched. All files and directories at that path and
     // below will be monitored for changes.
     watcher.watch(path.as_ref(), RecursiveMode::Recursive)?;
 
+    thread::sleep(time::Duration::from_millis(250));
+
+    permissions::check_permission_recursive(path.clone());
+
     let common_path: Arc<Mutex<Option<PathBuf>>> = Default::default();
     let common_path_ref = common_path.clone();
     thread::spawn(move || loop {
-        let delay_duration = time::Duration::from_secs(5);
-        thread::sleep(delay_duration);
+        thread::sleep(time::Duration::from_secs(5));
 
         let mut paths_mutex = common_path_ref.lock().unwrap();
         let taken_path = paths_mutex.take();
@@ -52,7 +55,7 @@ async fn async_watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
     while let Some(res) = rx.next().await {
         match res {
             Ok(event) => {
-                if !event.kind.is_remove() && !event.kind.is_access() && !event.kind.is_other() {
+                if event.kind.is_create() || event.kind.is_modify() || event.kind.is_other() {
                     let mut paths: Vec<PathBuf> = event.clone().paths.clone();
                     let mut common_path_mutex = common_path.lock().unwrap();
                     if let Some(prev_common_path) = common_path_mutex.take() {
@@ -79,8 +82,7 @@ fn start_watcher(path: PathBuf) {
     });
 
     // Restart watcher every time it fails with a certain delay
-    let restart_delay = time::Duration::from_secs(60);
-    thread::sleep(restart_delay);
+    thread::sleep(time::Duration::from_secs(60));
     start_watcher(path.clone());
 }
 
@@ -90,6 +92,5 @@ fn main() {
         .expect("Argument 1 needs to be a path");
     let path = Path::new(path_input).to_path_buf();
 
-    permissions::check_permission_recursive(path.clone());
-    start_watcher(path.clone());
+    start_watcher(path);
 }
