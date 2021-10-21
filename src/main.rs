@@ -4,12 +4,9 @@ use futures::{
 };
 use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
 use std::{thread, time};
 
-use crate::common_path::common_path_all;
-
-mod common_path;
+mod chmod;
 mod permissions;
 
 fn async_watcher() -> notify::Result<(RecommendedWatcher, Receiver<notify::Result<Event>>)> {
@@ -38,31 +35,18 @@ async fn async_watch(path: PathBuf) -> notify::Result<()> {
 
     thread::sleep(time::Duration::from_millis(500));
 
-    permissions::check_permission_recursive(path.clone());
-
-    let common_path: Arc<Mutex<Option<PathBuf>>> = Default::default();
-    let common_path_ref = common_path.clone();
-    thread::spawn(move || loop {
-        thread::sleep(time::Duration::from_millis(5000));
-
-        let mut paths_mutex = common_path_ref.lock().unwrap();
-        let taken_path = paths_mutex.take();
-        if let Some(path) = taken_path {
-            permissions::check_permission_recursive(path);
-        }
-    });
+    chmod::update_permission_recursive(path.clone());
 
     while let Some(res) = rx.next().await {
         match res {
             Ok(event) => {
                 if event.kind.is_create() || event.kind.is_modify() || event.kind.is_other() {
-                    let mut paths: Vec<PathBuf> = event.clone().paths.clone();
-                    let mut common_path_mutex = common_path.lock().unwrap();
-                    if let Some(prev_common_path) = common_path_mutex.take() {
-                        paths.push(prev_common_path);
+                    if cfg!(debug_assertions) {
+                        println!("watch event: {:?}", event.kind);
                     }
-                    let new_common_path = common_path_all(paths);
-                    *common_path_mutex = new_common_path;
+
+                    let paths: Vec<PathBuf> = event.clone().paths.clone();
+                    permissions::check_permissions(paths);
                 }
             }
             Err(err) => println!("watch error: {:?}", err),
@@ -81,8 +65,8 @@ fn start_watcher(path: PathBuf) {
         }
     });
 
-    // Restart watcher every time it fails with a certain delay
-    thread::sleep(time::Duration::from_secs(60));
+    // Restart watcher every time it fails
+    thread::sleep(time::Duration::from_secs(30));
     start_watcher(path.clone());
 }
 
