@@ -3,7 +3,10 @@ use futures::{
     SinkExt, StreamExt,
 };
 use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
-use std::path::{Path, PathBuf};
+use std::{
+    panic,
+    path::{Path, PathBuf},
+};
 use std::{thread, time};
 
 mod chmod;
@@ -57,13 +60,22 @@ async fn async_watch(path: PathBuf) -> notify::Result<()> {
 }
 
 fn start_watcher(path: PathBuf) {
-    println!("watching: {:?}", path.clone());
+    println!("Starting watcher in: {:?}", path.clone());
 
-    futures::executor::block_on(async {
-        if let Err(e) = async_watch(path.clone()).await {
-            println!("error: {:?}", e)
-        }
+    let res = panic::catch_unwind(|| {
+        futures::executor::block_on(async {
+            if let Err(e) = async_watch(path.clone()).await {
+                println!("error: {:?}", e)
+            }
+        });
     });
+
+    match res {
+        Err(err) => {
+            println!("Watcher crashed {:?}", err);
+        }
+        _ => {}
+    }
 
     // Restart watcher every time it fails
     thread::sleep(time::Duration::from_secs(30));
