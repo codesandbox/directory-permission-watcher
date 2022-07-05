@@ -7,6 +7,10 @@ edition = "2018"
 
 [dependencies]
 notify = "5.0.0-pre.15"
-futures = "0.3.17"
 file-mode = "0.1.2"
-tokio = { version = "1.19.2", features = ["sync"] }
+tokio = { version = "1.19.2", features = [
+  "sync",
+  "rt-multi-thread",
+  "macros",
+  "time",
+] }

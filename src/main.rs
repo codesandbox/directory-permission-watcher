@@ -1,9 +1,6 @@
 use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
-use std::{
-    panic,
-    path::{Path, PathBuf},
-};
-use std::{thread, time};
+use std::path::Path;
+use std::time;
 use tokio::sync::mpsc::{channel, Receiver};
 
 mod chmod;
@@ -24,60 +21,57 @@ fn async_watcher() -> notify::Result<(RecommendedWatcher, Receiver<notify::Resul
     Ok((watcher, rx))
 }
 
-async fn async_watch(path: PathBuf) -> notify::Result<()> {
+async fn async_watch(path: &Path) -> notify::Result<()> {
     let (mut watcher, mut rx) = async_watcher()?;
 
     // Add a path to be watched. All files and directories at that path and
     // below will be monitored for changes.
     watcher.watch(path.as_ref(), RecursiveMode::Recursive)?;
 
-    thread::sleep(time::Duration::from_millis(500));
+    tokio::time::sleep(time::Duration::from_millis(500)).await;
+    chmod::update_permission_recursive(path);
 
-    chmod::update_permission_recursive(path.clone());
+    // Spawn the watcher in a new thread so it can't block the main thread.
+    let thread = tokio::spawn(async move {
+        while let Some(res) = rx.recv().await {
+            match res {
+                Ok(event) => {
+                    if event.kind.is_create() || event.kind.is_modify() || event.kind.is_other() {
+                        if cfg!(debug_assertions) {
+                            println!("watch event: {:?}", event.kind);
+                        }
 
-    while let Some(res) = rx.recv().await {
-        match res {
-            Ok(event) => {
-                if event.kind.is_create() || event.kind.is_modify() || event.kind.is_other() {
-                    if cfg!(debug_assertions) {
-                        println!("watch event: {:?}", event.kind);
+                        permissions::check_permissions(event.paths);
                     }
-
-                    permissions::check_permissions(event.paths);
                 }
+                Err(err) => println!("watch error: {:?}", err),
             }
-            Err(err) => println!("watch error: {:?}", err),
         }
-    }
+    });
+
+    thread.await.ok();
 
     Ok(())
 }
 
-fn start_watcher(path: PathBuf) {
+async fn start_watcher(path: &Path) {
     println!("Starting watcher in: {:?}", path);
 
-    let res = panic::catch_unwind(|| {
-        futures::executor::block_on(async {
-            if let Err(e) = async_watch(path.clone()).await {
-                println!("error: {:?}", e)
-            }
-        });
-    });
-
-    if let Err(err) = res {
-        println!("Watcher crashed {:?}", err);
+    if let Err(e) = async_watch(path).await {
+        println!("Watcher crashed: {:?}", e)
     }
-
-    // Restart watcher every time it fails
-    thread::sleep(time::Duration::from_secs(30));
-    start_watcher(path.clone());
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let path_input = &std::env::args()
         .nth(1)
         .expect("Argument 1 needs to be a path");
     let path = Path::new(path_input).to_path_buf();
 
-    start_watcher(path);
+    loop {
+        start_watcher(&path).await;
+        // Restart watcher every time it fails
+        tokio::time::sleep(time::Duration::from_secs(30)).await;
+    }
 }
