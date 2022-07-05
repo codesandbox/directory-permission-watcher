@@ -1,29 +1,24 @@
-use futures::{
-    channel::mpsc::{channel, Receiver},
-    SinkExt, StreamExt,
-};
 use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
 use std::{
     panic,
     path::{Path, PathBuf},
 };
 use std::{thread, time};
+use tokio::sync::mpsc::{channel, Receiver};
 
 mod chmod;
 mod permissions;
 
 fn async_watcher() -> notify::Result<(RecommendedWatcher, Receiver<notify::Result<Event>>)> {
-    let (mut tx, rx) = channel(1);
+    let (tx, rx) = channel(512);
 
     // Automatically select the best implementation for your platform.
     // You can also access each implementation directly e.g. INotifyWatcher.
     let watcher = RecommendedWatcher::new(move |res| {
-        futures::executor::block_on(async {
-            match tx.send(res).await {
-                Ok(()) => {}
-                Err(err) => println!("watch error: {:?}", err),
-            };
-        })
+        match tx.blocking_send(res) {
+            Ok(()) => {}
+            Err(err) => println!("watch error: {:?}", err),
+        };
     })?;
 
     Ok((watcher, rx))
@@ -40,7 +35,7 @@ async fn async_watch(path: PathBuf) -> notify::Result<()> {
 
     chmod::update_permission_recursive(path.clone());
 
-    while let Some(res) = rx.next().await {
+    while let Some(res) = rx.recv().await {
         match res {
             Ok(event) => {
                 if event.kind.is_create() || event.kind.is_modify() || event.kind.is_other() {
@@ -48,8 +43,7 @@ async fn async_watch(path: PathBuf) -> notify::Result<()> {
                         println!("watch event: {:?}", event.kind);
                     }
 
-                    let paths: Vec<PathBuf> = event.clone().paths.clone();
-                    permissions::check_permissions(paths);
+                    permissions::check_permissions(event.paths);
                 }
             }
             Err(err) => println!("watch error: {:?}", err),
@@ -60,7 +54,7 @@ async fn async_watch(path: PathBuf) -> notify::Result<()> {
 }
 
 fn start_watcher(path: PathBuf) {
-    println!("Starting watcher in: {:?}", path.clone());
+    println!("Starting watcher in: {:?}", path);
 
     let res = panic::catch_unwind(|| {
         futures::executor::block_on(async {
@@ -70,11 +64,8 @@ fn start_watcher(path: PathBuf) {
         });
     });
 
-    match res {
-        Err(err) => {
-            println!("Watcher crashed {:?}", err);
-        }
-        _ => {}
+    if let Err(err) = res {
+        println!("Watcher crashed {:?}", err);
     }
 
     // Restart watcher every time it fails
