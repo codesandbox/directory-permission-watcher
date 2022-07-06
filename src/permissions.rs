@@ -3,15 +3,7 @@ use std::io::{Error as IOError, ErrorKind as IOErrorKind};
 use std::path::{Path, PathBuf};
 
 fn should_log_io_error(err: &IOError) -> bool {
-    match err.kind() {
-        // This is probably a temporary file
-        IOErrorKind::NotFound => {
-            return false;
-        }
-        _ => {
-            return true;
-        }
-    }
+    !matches!(err.kind(), IOErrorKind::NotFound)
 }
 
 pub fn check_permission(p: &Path) {
@@ -109,7 +101,7 @@ pub fn check_permission(p: &Path) {
 }
 
 pub fn check_permissions(paths: Vec<PathBuf>) {
-    for path in paths.clone().iter() {
+    for path in paths.iter() {
         let p = path.as_path();
 
         if cfg!(debug_assertions) {
