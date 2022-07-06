@@ -49,7 +49,9 @@ async fn async_watch(path: &Path) -> notify::Result<()> {
         }
     });
 
-    thread.await.ok();
+    if let Err(err) = thread.await {
+        println!("watch thread join err: {:?}", err);
+    };
 
     Ok(())
 }
